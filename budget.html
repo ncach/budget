@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)">
+<title>Budget</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f7f7f2;--surface:#fff;--border:#e4e4dc;--text:#1a1a1a;--muted:#8a8a82;
+  --green:#16a34a;--green-bg:#f0fdf4;--green-light:#dcfce7;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --amber:#d97706;--amber-bg:#fffbeb;
+  --radius:14px;--radius-sm:10px;--font:'Inter',system-ui,sans-serif;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#111;--surface:#1c1c1e;--border:#2c2c2e;--text:#f2f2f7;--muted:#636366;
+    --green:#4ade80;--green-bg:#052e16;--green-light:#14532d;
+    --red:#f87171;--red-bg:#2c0a0a;--amber:#fbbf24;--amber-bg:#1c1000;}
+}
+html,body{height:100%;background:var(--bg);font-family:var(--font);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased}
+#root{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;background:var(--bg);position:relative;overflow:hidden}
+
+.view{display:none;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+.view.active{display:flex}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px calc(24px + var(--safe-bottom))}
+.scroll::-webkit-scrollbar{display:none}
+
+/* TOPBAR */
+.topbar{padding:calc(12px + var(--safe-top)) 16px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar-row{display:flex;align-items:center;justify-content:space-between}
+.page-title{font-size:21px;font-weight:600;letter-spacing:-0.4px}
+.page-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* BOTTOM NAV */
+.bottom-nav{background:var(--surface);border-top:1px solid var(--border);display:flex;padding:8px 4px calc(8px + var(--safe-bottom));flex-shrink:0}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;padding:6px 2px;color:var(--muted);font-family:var(--font);transition:color .15s}
+.nav-tab.active{color:var(--text)}
+.nav-tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-tab span{font-size:10px;font-weight:500}
+
+/* BALANCE HERO */
+.hero{background:var(--text);border-radius:var(--radius);padding:22px 20px;margin-bottom:16px;color:var(--bg)}
+.hero-lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.6;margin-bottom:8px}
+.hero-bal{font-size:48px;font-weight:600;letter-spacing:-2.5px;line-height:1}
+.hero-bal.low{color:var(--amber)}
+.hero-bal.empty{opacity:.4}
+.hero-sub{font-size:13px;opacity:.6;margin-top:8px}
+.hero-row{display:flex;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15)}
+.hstat{flex:1;text-align:center}
+.hstat+.hstat{border-left:1px solid rgba(255,255,255,.15)}
+.hstat-val{font-size:17px;font-weight:600}
+.hstat-lbl{font-size:11px;opacity:.55;margin-top:2px}
+
+/* WEEK BANNER */
+.week-banner{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.week-label{font-size:13px;font-weight:500}
+.week-dates{font-size:12px;color:var(--muted);margin-top:2px}
+.week-nav{display:flex;gap:6px}
+.wbtn{background:none;border:1px solid var(--border);border-radius:8px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s}
+.wbtn:active{background:var(--border)}
+.wbtn:disabled{opacity:.25;cursor:default}
+
+/* BUCKETS */
+.sec{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin:0 0 10px}
+.buckets{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.bucket{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s}
+.bucket.over{border-color:var(--red)}
+.bucket.warn{border-color:var(--amber)}
+.bucket-visual{position:relative;height:110px;background:var(--bg);overflow:hidden;flex-shrink:0}
+.bucket-water{position:absolute;bottom:0;left:0;right:0;transition:height .5s cubic-bezier(.4,0,.2,1)}
+.bucket-pct{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:600;z-index:2;white-space:nowrap;text-align:center}
+.bucket-info{padding:10px 12px}
+.bucket-name-row{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.bucket-em{font-size:16px;line-height:1}
+.bucket-name{font-size:13px;font-weight:600}
+.bucket-spent{font-size:12px;color:var(--muted)}
+.bucket-left-txt{font-size:12px;font-weight:500}
+.bucket-left-txt.over{color:var(--red)}
+.bucket-left-txt.warn{color:var(--amber)}
+.bucket-left-txt.ok{color:var(--green)}
+
+/* INPUTS */
+input,textarea,select{font-family:var(--font);font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;width:100%;outline:none;transition:border-color .2s;-webkit-appearance:none}
+input:focus,textarea:focus{border-color:var(--text)}
+textarea{resize:none;line-height:1.5}
+::placeholder{color:var(--muted)}
+.irow{display:flex;gap:8px;margin-bottom:10px}
+.iwrap{position:relative;flex:1}
+.ipre{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.ipl{padding-left:26px}
+
+/* BUTTONS */
+.btn{font-family:var(--font);font-size:15px;font-weight:500;border-radius:var(--radius-sm);padding:13px 16px;cursor:pointer;border:none;transition:opacity .15s,transform .1s;display:block;width:100%;text-align:center}
+.btn:active{opacity:.8;transform:scale(.99)}
+.btn-primary{background:var(--text);color:var(--bg)}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text)}
+.btn-danger{background:var(--red-bg);color:var(--red)}
+.btn-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-light)}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px}
+.card-pad{padding:16px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:none}
+
+/* TXN */
+.txn{display:flex;align-items:center;gap:11px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.txn:last-child{border-bottom:none}
+.txn-ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;background:var(--bg)}
+.txn-ic.inc{background:var(--green-bg)}
+.txn-body{flex:1;min-width:0}
+.txn-note{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.txn-meta{font-size:12px;color:var(--muted);margin-top:1px}
+.txn-amt{font-size:15px;font-weight:600;flex-shrink:0}
+.txn-amt.inc{color:var(--green)}
+.del-btn{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 4px 4px 8px;line-height:1;flex-shrink:0}
+.del-btn:active{color:var(--red)}
+
+/* STATUS */
+.msg{font-size:13px;font-weight:500;margin-top:8px;min-height:18px}
+.ok{color:var(--green)}.err{color:var(--red)}
+
+/* QUICK CATS */
+.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qbtn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 10px;font-size:14px;font-family:var(--font);color:var(--text);cursor:pointer;text-align:left;transition:background .15s}
+.qbtn:active{background:var(--border)}
+
+/* SETTINGS ROW */
+.srow{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border)}
+.srow:last-child{border-bottom:none}
+.srow-left{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500}
+
+/* EMPTY */
+.empty{text-align:center;padding:52px 24px;color:var(--muted)}
+.empty-ic{font-size:40px;margin-bottom:12px}
+.empty-t{font-size:14px;line-height:1.7}
+
+/* MODAL */
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;z-index:100;padding:12px}
+.overlay.off{display:none}
+.modal{background:var(--surface);border-radius:var(--radius);padding:22px;width:100%}
+.modal-t{font-size:17px;font-weight:600;margin-bottom:5px}
+.modal-s{font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.5}
+.modal-btns{display:flex;gap:10px}
+.modal-btns .btn{flex:1}
+
+/* NEW WEEK PROMPT */
+.new-week-banner{background:var(--green-bg);border:1px solid var(--green-light);border-radius:var(--radius);padding:16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.nw-text{font-size:14px;color:var(--green);font-weight:500;line-height:1.4}
+.nw-sub{font-size:12px;color:var(--green);opacity:.7;margin-top:2px}
+</style>
+</head>
+<body>
+<div id="root">
+
+<!-- BUCKETS VIEW -->
+<div class="view active" id="view-buckets">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div><div class="page-title">My Budget</div><div class="page-sub" id="bk-sub"></div></div>
+      <div class="week-nav" style="display:flex;gap:6px">
+        <button class="wbtn" onclick="prevWeek()" id="prev-wk-btn">&#8592;</button>
+        <button class="wbtn" onclick="nextWeek()" id="next-wk-btn">&#8594;</button>
+      </div>
+    </div>
+  </div>
+  <div class="scroll" id="bk-scroll"></div>
+</div>
+
+<!-- ADD VIEW -->
+<div class="view" id="view-add">
+  <div class="topbar"><div class="page-title">Add</div></div>
+  <div class="scroll">
+
+    <div class="sec">New paycheck</div>
+    <div class="card">
+      <div class="card-pad">
+        <p style="font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.6">Every time you get paid, add it here. It goes straight to your balance.</p>
+        <div class="irow">
+          <div class="iwrap"><span class="ipre">$</span><input type="number" id="inc-amt" class="ipl" placeholder="0.00" inputmode="decimal" min="0" step="0.01"></div>
+          <input type="text" id="inc-note" placeholder="e.g. Paycheck" style="flex:1.2">
+        </div>
+        <button class="btn btn-primary" onclick="addPaycheck()">Add paycheck</button>
+        <div class="msg" id="inc-msg"></div>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:8px">Log a transaction</div>
+    <div class="card">
+      <div class="card-pad">
+        <p style="font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.6">Type naturally — the app reads the amount and picks the right bucket automatically.</p>
+        <textarea id="txn-in" rows="2" placeholder='"20 dollars at Walmart" or "$55 gas" or "pizza $14"'></textarea>
+        <button class="btn btn-primary" onclick="logTxn()" style="margin-top:10px">Log transaction</button>
+        <div class="msg" id="txn-msg"></div>
+      </div>
+    </div>
+
+    <div class="sec" style="margin-top:8px">Quick log</div>
+    <div class="card">
+      <div class="card-pad">
+        <p style="font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.6">Enter an amount, then tap a bucket.</p>
+        <div class="iwrap" style="margin-bottom:12px"><span class="ipre">$</span><input type="number" id="q-amt" class="ipl" placeholder="0.00" inputmode="decimal" min="0" step="0.01"></div>
+        <div class="qgrid" id="q-cats"></div>
+        <div class="msg" id="q-msg"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TRANSACTIONS VIEW -->
+<div class="view" id="view-txns">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div><div class="page-title">Transactions</div><div class="page-sub" id="tx-sub"></div></div>
+      <div class="week-nav" style="display:flex;gap:6px">
+        <button class="wbtn" onclick="prevWeek()">&#8592;</button>
+        <button class="wbtn" onclick="nextWeek()" id="next-wk-btn2">&#8594;</button>
+      </div>
+    </div>
+  </div>
+  <div class="scroll" id="tx-scroll"></div>
+</div>
+
+<!-- SETTINGS VIEW -->
+<div class="view" id="view-settings">
+  <div class="topbar"><div class="page-title">Settings</div></div>
+  <div class="scroll">
+    <p class="sec">Bucket limits</p>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.6">Set a weekly spending limit for each bucket. The bar fills as you spend — turns red if you go over. These are just guardrails, not reservations.</p>
+    <div class="card" id="cat-settings"></div>
+    <button class="btn btn-primary" onclick="saveCats()" style="margin-top:6px">Save limits</button>
+    <div class="msg" id="set-msg" style="text-align:center;margin-top:10px"></div>
+
+    <p class="sec" style="margin-top:24px">Danger zone</p>
+    <div class="card"><div class="card-pad">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:14px;line-height:1.6">Permanently wipes all your data and starts fresh.</p>
+      <button class="btn btn-danger" onclick="confirmReset()">Clear all data</button>
+    </div></div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-tab active" id="nt-buckets" onclick="showView('buckets')">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>Budget</span>
+  </button>
+  <button class="nav-tab" id="nt-add" onclick="showView('add')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span>Add</span>
+  </button>
+  <button class="nav-tab" id="nt-txns" onclick="showView('txns')">
+    <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+    <span>Transactions</span>
+  </button>
+  <button class="nav-tab" id="nt-settings" onclick="showView('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>Settings</span>
+  </button>
+</nav>
+
+<!-- MODAL -->
+<div class="overlay off" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-t" id="m-title"></div>
+    <div class="modal-s" id="m-sub"></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="m-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STORAGE ──────────────────────────────────────────────────────
+const K={cats:'bw1_cats',txns:'bw1_txns',money:'bw1_money',week:'bw1_week'};
+function ld(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+
+// ── DEFAULTS ─────────────────────────────────────────────────────
+const DEF_CATS=[
+  {id:'groceries',label:'Groceries',em:'🛒',limit:0},
+  {id:'dining',   label:'Dining out',em:'🍕',limit:0},
+  {id:'gas',      label:'Gas',em:'⛽',limit:0},
+  {id:'transport',label:'Transport',em:'🚗',limit:0},
+  {id:'bills',    label:'Bills',em:'🧾',limit:0},
+  {id:'health',   label:'Health',em:'💊',limit:0},
+  {id:'fun',      label:'Fun',em:'🎮',limit:0},
+  {id:'other',    label:'Other',em:'📦',limit:0},
+];
+
+// ── KEYWORD MAP ───────────────────────────────────────────────────
+const KW={
+  groceries:['walmart','kroger','aldi','safeway','costco','trader joe','whole foods','grocery','groceries','supermarket','heb','publix','meijer','wegmans','sprouts','food lion','market'],
+  dining:['restaurant','pizza','burger','taco','sushi','mcdonald','chipotle','starbucks','coffee','cafe','diner','subway','domino','doordash','ubereats','grubhub','lunch','dinner','breakfast','brunch','takeout','fast food','wendys','popeyes','chick-fil','panera','applebee','ihop','waffle','chinese','thai','ramen','ate','eating'],
+  gas:['gas','shell','bp','exxon','chevron','mobil','sunoco','fuel','fill up','filled','petrol','speedway','casey','kwik','gallon','pump'],
+  transport:['uber','lyft','bus','train','metro','transit','parking','toll','taxi','cab','fare'],
+  bills:['electric','electricity','water','internet','phone','insurance','rent','mortgage','utility','utilities','at&t','verizon','comcast','xfinity','spectrum','t-mobile','bill','subscription','netflix','hulu','spotify','amazon prime','disney','hbo'],
+  health:['doctor','pharmacy','cvs','walgreens','rite aid','hospital','medicine','prescription','gym','dental','dentist','vision','copay','urgent care'],
+  fun:['movie','cinema','theater','concert','game','ticket','bar','bowling','steam','xbox','playstation','golf','sport','hobby','amazon','target','shopping','clothes','clothing'],
+};
+
+// ── STATE ─────────────────────────────────────────────────────────
+let cats  = ld(K.cats,  DEF_CATS);
+let txns  = ld(K.txns,  []);
+let money = ld(K.money, []);
+
+// weekOffset: 0 = current week, -1 = last week, etc.
+let weekOff = 0;
+
+// ── WEEK HELPERS ──────────────────────────────────────────────────
+function weekStart(offset){
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - day + (offset * 7));
+  return d;
+}
+function weekEnd(offset){
+  const s = weekStart(offset);
+  const e = new Date(s);
+  e.setDate(e.getDate() + 6);
+  e.setHours(23,59,59,999);
+  return e;
+}
+function inWeek(arr, off){
+  const s=weekStart(off).getTime(), e=weekEnd(off).getTime();
+  return arr.filter(i=>{ const t=new Date(i.date).getTime(); return t>=s&&t<=e; });
+}
+function isCurrentWeek(){ return weekOff===0; }
+function fmtWeek(off){
+  const s=weekStart(off), e=weekEnd(off);
+  const mo=(d)=>d.toLocaleString('default',{month:'short'});
+  return `${mo(s)} ${s.getDate()} – ${mo(e)} ${e.getDate()}`;
+}
+
+// ── MATH ──────────────────────────────────────────────────────────
+function f(n){return Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function catSpent(id,off){return inWeek(txns,off).filter(t=>t.cat===id).reduce((s,t)=>s+t.amount,0)}
+function weekSpent(off){return inWeek(txns,off).reduce((s,t)=>s+t.amount,0)}
+function weekIncome(off){return inWeek(money,off).reduce((s,m)=>s+m.amount,0)}
+// Running balance = ALL income ever minus ALL spending ever
+function runningBalance(){
+  const totalIn  = money.reduce((s,m)=>s+m.amount,0);
+  const totalOut = txns.reduce((s,t)=>s+t.amount,0);
+  return totalIn - totalOut;
+}
+
+// ── PARSE TEXT INPUT ──────────────────────────────────────────────
+function parse(text){
+  const t=text.toLowerCase();
+  const m=t.match(/\$?\s*([\d,]+(?:\.[\d]{1,2})?)/);
+  if(!m)return null;
+  const amount=parseFloat(m[1].replace(/,/g,''));
+  if(!amount||amount<=0||amount>100000)return null;
+  let cat='other';
+  for(const[id,words]of Object.entries(KW)){if(words.some(w=>t.includes(w))){cat=id;break;}}
+  let note=text.replace(/\$?\s*[\d,]+(?:\.[\d]{1,2})?/g,'').replace(/\b(spent|at|on|for|the|a|an|i|my|dollars?|bucks?)\b/gi,'').replace(/\s+/g,' ').trim().slice(0,40);
+  if(!note)note=cats.find(c=>c.id===cat)?.label||'Expense';
+  return{amount,cat,note};
+}
+
+// ── RENDER BUCKETS ────────────────────────────────────────────────
+function renderBuckets(){
+  const off = weekOff;
+  const isNow = isCurrentWeek();
+  document.getElementById('bk-sub').textContent = isNow ? 'This week' : fmtWeek(off);
+  document.getElementById('prev-wk-btn').disabled = false;
+  document.getElementById('next-wk-btn').disabled = isNow;
+
+  const balance = runningBalance();
+  const wkSpent = weekSpent(off);
+  const wkIncome = weekIncome(off);
+  const balClass = balance<=0?'empty':balance<20?'low':'';
+
+  // new week prompt: it's current week but no income logged yet for this week,
+  // but there's prior income
+  const allIncome = money.reduce((s,m)=>s+m.amount,0);
+  const showNewWeek = isNow && wkIncome===0 && allIncome>0;
+
+  let html='';
+
+  // NEW WEEK PROMPT
+  if(showNewWeek){
+    html+=`<div class="new-week-banner">
+      <div><div class="nw-text">New week — add your paycheck!</div><div class="nw-sub">Tap Add to log this week's income.</div></div>
+      <button class="btn btn-green" style="width:auto;padding:9px 16px;font-size:14px;white-space:nowrap" onclick="showView('add')">Add +</button>
+    </div>`;
+  }
+
+  // BALANCE HERO
+  html+=`<div class="hero">
+    <div class="hero-lbl">Available balance</div>
+    <div class="hero-bal ${balClass}">$${f(balance)}</div>
+    <div class="hero-sub">${balance<0?'You have spent more than you have earned.':`Across all time — what you actually have left.`}</div>
+    <div class="hero-row">
+      <div class="hstat"><div class="hstat-val">$${f(wkIncome)}</div><div class="hstat-lbl">This week in</div></div>
+      <div class="hstat"><div class="hstat-val">$${f(wkSpent)}</div><div class="hstat-lbl">This week out</div></div>
+      <div class="hstat"><div class="hstat-val" style="${(wkIncome-wkSpent)<0?'color:var(--red)':''}">$${f(Math.abs(wkIncome-wkSpent))}</div><div class="hstat-lbl">${(wkIncome-wkSpent)<0?'Over':'Saved'}</div></div>
+    </div>
+  </div>`;
+
+  // BUCKETS
+  const activeCats = cats.filter(c=>c.limit>0||catSpent(c.id,off)>0);
+  const zeroCats   = cats.filter(c=>c.limit===0&&catSpent(c.id,off)===0);
+
+  if(activeCats.length===0){
+    html+=`<div class="empty"><div class="empty-ic">🪣</div><div class="empty-t">No buckets set up yet.<br>Go to <strong>Settings</strong> to set your weekly spending limits.</div></div>`;
+  } else {
+    html+=`<div class="sec">Weekly buckets</div><div class="buckets">`;
+    activeCats.forEach(c=>{
+      const spent=catSpent(c.id,off);
+      const lim=c.limit;
+      const hasLim=lim>0;
+      const pct=hasLim?Math.min(100,Math.round((spent/lim)*100)):0;
+      const over=hasLim&&spent>lim;
+      const warn=hasLim&&pct>=80&&!over;
+      const barClass=over?'fill-red':warn?'fill-amber':'fill-green';
+      const bucketClass=over?'bucket over':warn?'bucket warn':'bucket';
+      const spentClass=over?'over':warn?'warn':'';
+      const left=lim-spent;
+
+      const waterColor = over ? 'rgba(220,38,38,0.18)' : warn ? 'rgba(217,119,6,0.18)' : 'rgba(22,163,74,0.18)';
+      const waterH = hasLim ? Math.min(100, pct) : 0;
+      const pctLabel = hasLim ? (over ? `${pct}% — over!` : `${pct}%`) : 'no limit';
+      const leftClass = over ? 'over' : warn ? 'warn' : 'ok';
+      const leftTxt = !hasLim ? '' : over ? `$${f(Math.abs(left))} over` : `$${f(left)} left`;
+      html+=`<div class="${bucketClass}">
+        <div class="bucket-visual">
+          <div class="bucket-water" style="height:${waterH}%;background:${waterColor};">
+          </div>
+          <div class="bucket-pct" style="color:${over?'var(--red)':warn?'var(--amber)':'var(--text)'}">${pctLabel}</div>
+        </div>
+        <div class="bucket-info">
+          <div class="bucket-name-row"><span class="bucket-em">${c.em}</span><span class="bucket-name">${c.label}</span></div>
+          <div class="bucket-spent">$${f(spent)} ${hasLim?`of $${f(lim)}`:'spent'}</div>
+          ${hasLim?`<div class="bucket-left-txt ${leftClass}">${leftTxt}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  if(zeroCats.length>0 && activeCats.length>0){
+    html+=`<p style="font-size:12px;color:var(--muted);text-align:center;margin-top:4px">${zeroCats.length} inactive bucket${zeroCats.length>1?'s':''} hidden — set a limit in Settings to show them.</p>`;
+  }
+
+  document.getElementById('bk-scroll').innerHTML=html;
+}
+
+// ── RENDER TRANSACTIONS ───────────────────────────────────────────
+function renderTxns(){
+  const off=weekOff;
+  const isNow=isCurrentWeek();
+  document.getElementById('tx-sub').textContent=isNow?'This week':fmtWeek(off);
+  const nxt=document.getElementById('next-wk-btn2');
+  if(nxt)nxt.disabled=isNow;
+
+  const items=[
+    ...inWeek(txns,off).map(t=>({...t,type:'expense'})),
+    ...inWeek(money,off).map(m=>({...m,type:'income'}))
+  ].sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  if(!items.length){
+    document.getElementById('tx-scroll').innerHTML=`<div class="empty"><div class="empty-ic">📋</div><div class="empty-t">No transactions this week.<br>Tap <strong>Add</strong> to log something.</div></div>`;
+    return;
+  }
+
+  let html='<div class="card">';
+  items.forEach(item=>{
+    const isInc=item.type==='income';
+    const cat=cats.find(c=>c.id===item.cat)||{em:'📦',label:'Other'};
+    const ds=new Date(item.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    html+=`<div class="txn">
+      <div class="txn-ic${isInc?' inc':''}">${isInc?'💰':cat.em}</div>
+      <div class="txn-body">
+        <div class="txn-note">${item.note}</div>
+        <div class="txn-meta">${isInc?'Income':cat.label} · ${ds}</div>
+      </div>
+      <div class="txn-amt${isInc?' inc':''}">${isInc?'+':'-'} $${f(item.amount)}</div>
+      <button class="del-btn" onclick="delItem('${item.id}','${item.type}')">×</button>
+    </div>`;
+  });
+  html+='</div>';
+  document.getElementById('tx-scroll').innerHTML=html;
+}
+
+// ── RENDER SETTINGS ────────────────────────────────────────────────
+function renderSettings(){
+  document.getElementById('cat-settings').innerHTML=cats.map(c=>`
+    <div class="srow">
+      <div class="srow-left"><span style="font-size:19px">${c.em}</span>${c.label}</div>
+      <div style="display:flex;align-items:center;gap:5px">
+        <span style="color:var(--muted)">$</span>
+        <input type="number" id="cs-${c.id}" value="${c.limit||''}" placeholder="0" min="0" step="5"
+          style="width:88px;text-align:right;padding:8px 10px;font-size:15px" inputmode="numeric">
+      </div>
+    </div>`).join('');
+}
+
+// ── RENDER QUICK CATS ──────────────────────────────────────────────
+function renderQuickCats(){
+  document.getElementById('q-cats').innerHTML=cats.map(c=>
+    `<button class="qbtn" onclick="quickLog('${c.id}')">${c.em} ${c.label}</button>`
+  ).join('');
+}
+
+// ── ACTIONS ────────────────────────────────────────────────────────
+function addPaycheck(){
+  const a=parseFloat(document.getElementById('inc-amt').value);
+  if(!a||a<=0){setMsg('inc-msg','err','Enter a valid amount.');return;}
+  const n=document.getElementById('inc-note').value.trim()||'Paycheck';
+  money.push({amount:a,note:n,date:new Date().toISOString(),id:''+Date.now()});
+  sv(K.money,money);
+  document.getElementById('inc-amt').value='';
+  document.getElementById('inc-note').value='';
+  setMsg('inc-msg','ok',`✓ $${f(a)} added to your balance`);
+  refresh();
+}
+
+function logTxn(){
+  const text=document.getElementById('txn-in').value.trim();
+  if(!text){setMsg('txn-msg','err','Type something first.');return;}
+  const p=parse(text);
+  if(!p){setMsg('txn-msg','err','No amount found — try "$20 Walmart" or "pizza $14"');return;}
+  txns.push({...p,date:new Date().toISOString(),id:''+Date.now()});
+  sv(K.txns,txns);
+  document.getElementById('txn-in').value='';
+  const cat=cats.find(c=>c.id===p.cat);
+  setMsg('txn-msg','ok',`✓ $${f(p.amount)} → ${cat?.label||'Other'}`);
+  refresh();
+}
+
+function quickLog(catId){
+  const a=parseFloat(document.getElementById('q-amt').value);
+  if(!a||a<=0){setMsg('q-msg','err','Enter an amount first.');return;}
+  const cat=cats.find(c=>c.id===catId);
+  txns.push({amount:a,cat:catId,note:cat?.label||'Expense',date:new Date().toISOString(),id:''+Date.now()});
+  sv(K.txns,txns);
+  document.getElementById('q-amt').value='';
+  setMsg('q-msg','ok',`✓ $${f(a)} → ${cat?.label||'Other'}`);
+  refresh();
+}
+
+function saveCats(){
+  cats.forEach(c=>{
+    const el=document.getElementById('cs-'+c.id);
+    if(el)c.limit=parseFloat(el.value)||0;
+  });
+  sv(K.cats,cats);
+  setMsg('set-msg','ok','✓ Limits saved');
+  setTimeout(()=>{const el=document.getElementById('set-msg');if(el&&el.textContent==='✓ Limits saved')el.textContent='';},2500);
+  refresh();
+}
+
+// ── DELETE ─────────────────────────────────────────────────────────
+let _del=null;
+function delItem(id,type){
+  const arr=type==='income'?money:txns;
+  const item=arr.find(i=>i.id===id);
+  if(!item)return;
+  _del={id,type};
+  openModal('Delete this entry?',`"${item.note}" — $${f(item.amount)}`,'Delete',doDelete);
+}
+function doDelete(){
+  if(!_del)return;
+  const{id,type}=_del;
+  if(type==='income')money=money.filter(i=>i.id!==id),sv(K.money,money);
+  else txns=txns.filter(t=>t.id!==id),sv(K.txns,txns);
+  _del=null;closeModal();refresh();
+}
+
+function confirmReset(){
+  openModal('Clear all data?','This permanently deletes everything. Cannot be undone.','Delete everything',()=>{
+    Object.values(K).forEach(k=>localStorage.removeItem(k));
+    cats=JSON.parse(JSON.stringify(DEF_CATS));txns=[];money=[];
+    weekOff=0;closeModal();refresh();
+  });
+}
+
+// ── WEEK NAV ───────────────────────────────────────────────────────
+function prevWeek(){weekOff--;refresh();}
+function nextWeek(){if(!isCurrentWeek()){weekOff++;refresh();}}
+
+// ── NAV ────────────────────────────────────────────────────────────
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.getElementById('nt-'+v).classList.add('active');
+  if(v==='settings')renderSettings();
+  document.querySelectorAll('.scroll').forEach(el=>el.scrollTop=0);
+}
+
+// ── MODAL ──────────────────────────────────────────────────────────
+function openModal(t,s,cl,fn){
+  document.getElementById('m-title').textContent=t;
+  document.getElementById('m-sub').textContent=s;
+  document.getElementById('m-confirm').textContent=cl;
+  document.getElementById('m-confirm').onclick=fn;
+  document.getElementById('modal').classList.remove('off');
+}
+function closeModal(){document.getElementById('modal').classList.add('off');_del=null;}
+
+// ── HELPERS ────────────────────────────────────────────────────────
+function setMsg(id,type,txt){
+  const el=document.getElementById(id);if(!el)return;
+  el.className='msg'+(type?' '+type:'');el.textContent=txt;
+  if(type==='ok')setTimeout(()=>{if(el.textContent===txt)el.textContent='';},3000);
+}
+
+function refresh(){renderBuckets();renderTxns();renderQuickCats();}
+
+// Enter key on txn input
+document.getElementById('txn-in').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();logTxn();}
+});
+
+refresh();
+</script>
+</body>
+</html>
